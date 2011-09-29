@@ -1,0 +1,1 @@
+Use this project to upload tomcat releases to maven-central. (via Sonatype-OSS)

@@ -1,0 +1,47 @@
+<project name="ant-demo" default="clean" basedir="." xmlns:artifact="antlib:org.apache.maven.artifact.ant">
+	
+	<property file="build.properties"/>
+	<property name="dist" location="dist" />
+	
+	<path id="maven-ant-tasks.classpath" path="lib/maven-ant-tasks-2.1.3.jar" />
+  	<typedef resource="org/apache/maven/artifact/ant/antlib.xml"
+	           uri="antlib:org.apache.maven.artifact.ant"
+	           classpathref="maven-ant-tasks.classpath" />
+	
+	<target name="init">
+		<mkdir dir="${dist}" />
+	</target>
+
+	<target name="dist" depends="init" description="generate the distribution">
+		<get dest="${dist}/tomcat.zip" src="${tomcat-download-url}"/>
+		<get dest="${dist}/tomcat.zip.MD5" src="${tomcat-download-url-md5}"/>
+		<checksum file="${dist}/tomcat.zip" format="MD5SUM" verifyproperty="isMD5ok"/>
+		<echo message="${isMD5ok}"/>
+		<condition property="checksum.matches.fail">
+			        <equals arg1="${isMD5ok}" arg2="false"/>
+			      </condition>
+		<fail if="checksum.matches.fail">Checksum did not match</fail>
+	</target>
+	
+	<target name="preparePomFile" depends="init" description="prepares the pom.xml file to release">
+		<copy file="pom.xml" tofile="${dist}/pom.xml"/>
+		<replace file="${dist}/pom.xml" token="@@@tomcat.version@@@" value="${tomcat.version}"/>
+	</target>
+
+	<target name="stage" depends="dist,preparePomFile" description="deploy release version to Maven staging repository">
+		<!-- sign and deploy the artifact -->
+		<artifact:mvn>
+			<arg value="org.apache.maven.plugins:maven-gpg-plugin:1.3:sign-and-deploy-file" />
+			<arg value="-Durl=${maven-staging-repository-url}" />
+			<arg value="-DrepositoryId=${maven-staging-repository-id}" />
+			<arg value="-DpomFile=${dist}/pom.xml" />
+			<arg value="-Dfile=${dist}/tomcat.zip" />
+			<arg value="-Pgpg" />
+		</artifact:mvn>
+	</target>
+
+	<target name="clean" description="clean up">
+		<delete dir="${dist}" />
+	</target>
+	
+</project>
